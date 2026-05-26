@@ -1,0 +1,20 @@
+{
+  "name": "leasing-demo",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:tenant\" \"npm run dev:admin\"",
+    "dev:tenant": "npm -w apps/tenant run dev",
+    "dev:admin": "npm -w apps/admin run dev",
+    "db:migrate": "npm -w packages/core run db:migrate",
+    "db:seed": "npm -w packages/core run db:seed",
+    "db:reset": "npm -w packages/core run db:reset"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,9 @@
+node_modules/
+.env
+*.db
+*.db-journal
+.next/
+dist/
+data/
+.DS_Store
+.claude/

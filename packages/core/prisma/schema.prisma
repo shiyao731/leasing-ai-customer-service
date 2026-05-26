@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../../data/leasing.db"
+}
+
+model Tenant {
+  id          String   @id @default(uuid())
+  name        String
+  roomNo      String
+  phone       String   @unique
+  activated   Boolean  @default(false)
+  leaseStart  DateTime
+  leaseEnd    DateTime
+  monthlyRent Float
+  billStatus  String   @default("normal") // normal | overdue
+  overdueDays Int      @default(0)
+  totalDue    Float    @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model MaintenanceStaff {
+  id        String @id @default(uuid())
+  name      String
+  specialty String // appliance | plumbing | doorlock | other
+  phone     String
+}
+
+model WorkOrder {
+  id          String   @id @default(uuid())
+  orderNo     String   @unique
+  tenantName  String
+  roomNo      String
+  phone       String
+  category    String   // appliance | plumbing | doorlock | other
+  description String
+  aiSummary   String   @default("")
+  status      String   @default("pending") // pending | assigned | in_progress | completed | cancelled
+  assignee    String?
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+}
+
+model Conversation {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenantName String
+  messages   String   @default("[]") // JSON array of {role, content, time}
+  resolved   Boolean  @default(false)
+  handoffAt  DateTime?
+  createdAt  DateTime @default(now())
+}
+
+model FaqEntry {
+  id        String  @id @default(uuid())
+  category  String
+  question  String
+  answer    String
+  keywords  String  @default("")
+  embedding String? // JSON array of floats
+}
+
+model RentCollection {
+  id           String   @id @default(uuid())
+  tenantName   String
+  roomNo       String
+  monthlyRent  Float
+  overdueDays  Int
+  totalDue     Float
+  suggestedMsg String
+  status       String   @default("pending") // pending | reminded
+  createdAt    DateTime @default(now())
+}
+
+model Settings {
+  id        String  @id @default("singleton")
+  nightMode Boolean @default(false)
+}
