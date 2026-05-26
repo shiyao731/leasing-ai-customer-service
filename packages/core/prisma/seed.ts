@@ -1,20 +1,6 @@
 import { PrismaClient } from "@prisma/client";
-import OpenAI from "openai";
 
 const prisma = new PrismaClient();
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
-});
-
-async function embed(text: string): Promise<number[]> {
-  const response = await openai.embeddings.create({
-    model: "text-embedding-3-small",
-    input: text,
-  });
-  return response.data[0].embedding;
-}
 
 async function main() {
   console.log("Seeding database...");
@@ -97,12 +83,8 @@ async function main() {
     { category: "看房", question: "我想看房", answer: "好的～看房预约需要管家安排，请问方便留个手机号吗？我让管家联系您安排时间🏠", keywords: "看房,预约,租房,咨询" },
   ];
 
-  console.log("  Generating FAQ embeddings...");
   for (const faq of faqs) {
-    const embedding = await embed(`${faq.question} ${faq.answer}`);
-    await prisma.faqEntry.create({
-      data: { ...faq, embedding: JSON.stringify(embedding) },
-    });
+    await prisma.faqEntry.create({ data: faq });
   }
   console.log(`  ${faqs.length} FAQ entries created with embeddings`);
 
