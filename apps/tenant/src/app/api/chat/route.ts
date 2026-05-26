@@ -111,7 +111,9 @@ export async function POST(req: NextRequest) {
       switch (action.type) {
         case "CREATE_ORDER": {
           const orderCount = await prisma.workOrder.count();
-          const orderNo = `AP001${String(new Date()).slice(2, 8).replace(/-/g, "")}${String(orderCount + 1).padStart(3, "0")}`;
+          const now = new Date();
+          const dateStr = `${String(now.getFullYear()).slice(2)}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}`;
+          const orderNo = `AP001${dateStr}${String(orderCount + 1).padStart(3, "0")}`;
           await prisma.workOrder.create({
             data: {
               orderNo,
