@@ -13,6 +13,7 @@ model Tenant {
   roomNo      String
   phone       String   @unique
   activated   Boolean  @default(false)
+  managerId   String?
   leaseStart  DateTime
   leaseEnd    DateTime
   monthlyRent Float
@@ -20,6 +21,15 @@ model Tenant {
   overdueDays Int      @default(0)
   totalDue    Float    @default(0)
   createdAt   DateTime @default(now())
+}
+
+model Manager {
+  id         String  @id @default(uuid())
+  name       String
+  phone      String
+  isOnDuty   Boolean @default(true)
+  wecomUserId String?
+  createdAt  DateTime @default(now())
 }
 
 model MaintenanceStaff {
@@ -75,7 +85,22 @@ model RentCollection {
   createdAt    DateTime @default(now())
 }
 
+model HandoffRequest {
+  id             String   @id @default(uuid())
+  tenantName     String
+  roomNo         String
+  phone          String
+  summary        String
+  status         String   @default("pending") // pending | assigned | claimed | closed
+  assignee       String?  // 指派管家姓名
+  conversationId String?
+  createdAt      DateTime @default(now())
+  claimedAt      DateTime?
+  claimedBy      String?
+}
+
 model Settings {
-  id        String  @id @default("singleton")
-  nightMode Boolean @default(false)
+  id              String  @id @default("singleton")
+  nightMode       Boolean @default(false)
+  wecomWebhookUrl String  @default("") // 企业微信机器人 Webhook URL
 }

@@ -145,11 +145,45 @@ export async function POST(req: NextRequest) {
           break;
         }
         case "HANDOFF": {
+          // Find tenant's assigned manager
+          let managerName: string | null = null;
+          let assignStatus = "pending";
+
+          if (tenant?.id) {
+            const tenantRecord = await prisma.tenant.findUnique({
+              where: { id: tenant.id },
+              select: { managerId: true },
+            });
+            if (tenantRecord?.managerId) {
+              const mgr = await prisma.manager.findUnique({
+                where: { id: tenantRecord.managerId },
+              });
+              if (mgr?.isOnDuty) {
+                managerName = mgr.name;
+                assignStatus = "assigned";
+              }
+            }
+          }
+
+          // Create handoff request
+          await prisma.handoffRequest.create({
+            data: {
+              tenantName: tenant?.name || "访客",
+              roomNo: tenant?.roomNo || "未知",
+              phone: tenant?.phone || "未知",
+              summary: action.params.summary || "转人工请求",
+              status: assignStatus,
+              assignee: managerName,
+            },
+          });
+
+          // Notify (mock → console / real WeCom webhook)
           await sendNotification({
             type: "handoff",
             tenantName: tenant?.name || "未知",
             roomNo: tenant?.roomNo || "未知",
             summary: action.params.summary || "转人工请求",
+            phone: tenant?.phone,
           });
           break;
         }

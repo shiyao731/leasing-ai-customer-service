@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 
 export default function TenantsPage() {
   const [tenants, setTenants] = useState<any[]>([]);
+  const [managers, setManagers] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: "", roomNo: "", phone: "", leaseStart: "", leaseEnd: "", monthlyRent: 0 });
+  const [form, setForm] = useState({ name: "", roomNo: "", phone: "", leaseStart: "", leaseEnd: "", monthlyRent: 0, managerId: "" });
   const router = useRouter();
 
   const load = () => fetch("/api/admin/tenants").then((r) => r.json()).then(setTenants);
+  const loadManagers = () => fetch("/api/admin/tenants?type=managers").then((r) => r.json()).then(setManagers);
   useEffect(() => { load(); }, []);
+  useEffect(() => { fetch("/api/admin/settings").then(r => r.json()); }, []);
 
   async function addTenant() {
     await fetch("/api/admin/tenants", {
@@ -19,9 +22,15 @@ export default function TenantsPage() {
       body: JSON.stringify(form),
     });
     setShowAdd(false);
-    setForm({ name: "", roomNo: "", phone: "", leaseStart: "", leaseEnd: "", monthlyRent: 0 });
+    setForm({ name: "", roomNo: "", phone: "", leaseStart: "", leaseEnd: "", monthlyRent: 0, managerId: "" });
     load();
   }
+
+  // Load managers for the add form
+  useEffect(() => {
+    // Directly fetch managers from core via admin API
+    fetch("/api/admin/handoffs").then(r => r.json()).then(d => setManagers(d.managers || []));
+  }, []);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -106,6 +115,21 @@ export default function TenantsPage() {
                   />
                 </div>
               ))}
+              <div className="col-span-2">
+                <label className="text-xs text-stone-400 mb-1 block">分配管家</label>
+                <select
+                  value={form.managerId}
+                  onChange={(e) => setForm({ ...form, managerId: e.target.value })}
+                  className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-amber-300 focus:ring-2 focus:ring-amber-100"
+                >
+                  <option value="">暂不分配</option>
+                  {managers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} {m.isOnDuty ? "(值班中)" : "(离线)"}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="text-xs text-stone-400 mb-1 block">租期开始</label>
                 <input

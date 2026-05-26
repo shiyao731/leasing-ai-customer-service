@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
       name: body.name,
       roomNo: body.roomNo,
       phone: body.phone,
+      managerId: body.managerId || null,
       leaseStart: new Date(body.leaseStart),
       leaseEnd: new Date(body.leaseEnd),
       monthlyRent: body.monthlyRent,

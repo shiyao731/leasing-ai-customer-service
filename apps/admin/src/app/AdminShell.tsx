@@ -10,6 +10,7 @@ const navItems = [
   { href: "/tenants", label: "租客管理", icon: "◆" },
   { href: "/collection", label: "催租管理", icon: "◇" },
   { href: "/faq", label: "FAQ编辑", icon: "▣" },
+  { href: "/wecom", label: "消息中心", icon: "◈", badge: true },
   { href: "/settings", label: "设置", icon: "◎" },
 ];
 

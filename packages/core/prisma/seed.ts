@@ -11,40 +11,65 @@ async function main() {
   await prisma.rentCollection.deleteMany();
   await prisma.faqEntry.deleteMany();
   await prisma.maintenanceStaff.deleteMany();
+  await prisma.handoffRequest.deleteMany();
+  await prisma.conversation.deleteMany();
+  await prisma.workOrder.deleteMany();
+  await prisma.rentCollection.deleteMany();
+  await prisma.faqEntry.deleteMany();
+  await prisma.maintenanceStaff.deleteMany();
   await prisma.tenant.deleteMany();
+  await prisma.manager.deleteMany();
   await prisma.settings.deleteMany();
 
   // Settings
   await prisma.settings.create({
-    data: { id: "singleton", nightMode: false },
+    data: { id: "singleton", nightMode: false, wecomWebhookUrl: "" },
   });
 
-  // Tenants (5)
+  // Managers (3)
+  const managers = [
+    { name: "周管家", phone: "13810001001", isOnDuty: true },
+    { name: "吴管家", phone: "13810001002", isOnDuty: true },
+    { name: "郑管家", phone: "13810001003", isOnDuty: false },
+  ];
+  const createdManagers = [];
+  for (const m of managers) {
+    const created = await prisma.manager.create({ data: m });
+    createdManagers.push(created);
+  }
+  console.log(`  ${createdManagers.length} managers created`);
+
+  // Tenants (5) with manager assignment
   const tenants = [
     {
       name: "张三", roomNo: "3-1206", phone: "18800001234",
       leaseStart: new Date("2025-01-01"), leaseEnd: new Date("2025-12-31"),
       monthlyRent: 3500, billStatus: "normal", overdueDays: 0, totalDue: 0,
+      managerId: createdManagers[0].id, // 周管家
     },
     {
       name: "李四", roomNo: "5-0803", phone: "13900005678",
       leaseStart: new Date("2024-06-01"), leaseEnd: new Date("2025-06-30"),
       monthlyRent: 4200, billStatus: "overdue", overdueDays: 3, totalDue: 4200,
+      managerId: createdManagers[0].id, // 周管家
     },
     {
       name: "王五", roomNo: "2-1501", phone: "15600009012",
       leaseStart: new Date("2025-03-01"), leaseEnd: new Date("2026-03-31"),
       monthlyRent: 3800, billStatus: "overdue", overdueDays: 7, totalDue: 7600,
+      managerId: createdManagers[1].id, // 吴管家
     },
     {
       name: "赵六", roomNo: "1-0602", phone: "17700003456",
       leaseStart: new Date("2024-11-01"), leaseEnd: new Date("2025-11-30"),
       monthlyRent: 3200, billStatus: "normal", overdueDays: 0, totalDue: 0,
+      managerId: createdManagers[1].id, // 吴管家
     },
     {
       name: "陈七", roomNo: "4-0905", phone: "16600007890",
       leaseStart: new Date("2025-02-01"), leaseEnd: new Date("2026-02-28"),
       monthlyRent: 5000, billStatus: "overdue", overdueDays: 1, totalDue: 5000,
+      managerId: createdManagers[2].id, // 郑管家（离线）
     },
   ];
 

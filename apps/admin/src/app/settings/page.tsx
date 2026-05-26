@@ -4,12 +4,17 @@ import { useEffect, useState } from "react";
 
 export default function SettingsPage() {
   const [nightMode, setNightMode] = useState(false);
+  const [wecomWebhookUrl, setWecomWebhookUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/settings")
       .then((r) => r.json())
-      .then((data) => setNightMode(data.nightMode));
+      .then((data) => {
+        setNightMode(data.nightMode);
+        setWecomWebhookUrl(data.wecomWebhookUrl || "");
+      });
   }, []);
 
   async function toggle() {
@@ -22,6 +27,19 @@ export default function SettingsPage() {
       body: JSON.stringify({ nightMode: newVal }),
     });
     setSaving(false);
+  }
+
+  async function saveWebhook() {
+    setSaving(true);
+    setSaved(false);
+    await fetch("/api/admin/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nightMode, wecomWebhookUrl }),
+    });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   }
 
   return (
@@ -50,6 +68,34 @@ export default function SettingsPage() {
               }`}
             />
           </button>
+        </div>
+
+        {/* WeCom Webhook */}
+        <div className="p-6">
+          <h3 className="text-sm font-medium text-stone-700 mb-2">企业微信通知</h3>
+          <p className="text-xs text-stone-400 mb-3">
+            填入企微群机器人 Webhook URL，转接请求将实时推送到企微群（Demo阶段通过消息中心模拟）
+          </p>
+          <div className="flex gap-3">
+            <input
+              type="url"
+              value={wecomWebhookUrl}
+              onChange={(e) => setWecomWebhookUrl(e.target.value)}
+              placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..."
+              className="flex-1 px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm outline-none focus:border-wecom-green focus:ring-2 focus:ring-wecom-green/10 transition-all"
+            />
+            <button
+              onClick={saveWebhook}
+              disabled={saving}
+              className={`px-5 py-2.5 text-sm font-medium rounded-xl transition-all ${
+                saved
+                  ? "bg-emerald-50 text-emerald-600"
+                  : "bg-wecom-green text-white hover:bg-wecom-green/90"
+              }`}
+            >
+              {saved ? "已保存 ✓" : saving ? "..." : "保存"}
+            </button>
+          </div>
         </div>
 
         {/* Info */}
