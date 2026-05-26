@@ -15,10 +15,11 @@ export async function GET() {
     remindedCollections,
     overdueCollections,
     faqEntries,
+    handoffs,
   ] = await Promise.all([
     prisma.conversation.count(),
     prisma.conversation.count({ where: { resolved: true } }),
-    prisma.conversation.count({ where: { resolved: false } }),
+    prisma.conversation.count({ where: { resolved: false, handoffAt: { not: null } } }),
     prisma.workOrder.count({ where: { status: "pending" } }),
     prisma.workOrder.count({ where: { status: "in_progress" } }),
     prisma.workOrder.count({ where: { status: "completed" } }),
@@ -26,6 +27,12 @@ export async function GET() {
     prisma.rentCollection.count({ where: { status: "reminded" } }),
     prisma.rentCollection.count({ where: { overdueDays: { gte: 7 } } }),
     prisma.faqEntry.count(),
+    prisma.conversation.findMany({
+      where: { resolved: false, handoffAt: { not: null } },
+      orderBy: { handoffAt: "desc" },
+      take: 10,
+      select: { id: true, tenantName: true, messages: true, handoffAt: true, createdAt: true },
+    }),
   ]);
 
   const resolveRate =
@@ -38,5 +45,6 @@ export async function GET() {
     orders: { pending: pendingOrders, inProgress: inProgressOrders, completed: completedOrders },
     collections: { pending: pendingCollections, reminded: remindedCollections, severe: overdueCollections },
     faqCount: faqEntries,
+    handoffs,
   });
 }

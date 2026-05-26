@@ -188,6 +188,7 @@ export async function POST(req: NextRequest) {
           tenantName: tenant?.name || "访客",
           messages: JSON.stringify(newRound),
           resolved: !action || action.type !== "HANDOFF",
+          handoffAt: action?.type === "HANDOFF" ? new Date() : null,
         },
       });
       // Return sessionId for subsequent requests
