@@ -170,10 +170,13 @@ export default function TenantChat() {
           { role: "assistant", content: "抱歉，我这边出了点小问题，请稍后再试～", time: new Date().toISOString() },
         ]);
       } else {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: data.reply, time: new Date().toISOString() },
-        ]);
+        // Only add non-empty replies (bridge mode returns empty)
+        if (data.reply) {
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: data.reply, time: new Date().toISOString() },
+          ]);
+        }
         if (data.sessionId) setSessionId(data.sessionId);
         if (data.tenant) setTenant(data.tenant);
         // Enter manager chat bridge mode

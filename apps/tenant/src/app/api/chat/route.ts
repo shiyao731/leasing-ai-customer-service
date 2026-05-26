@@ -91,8 +91,9 @@ export async function POST(req: NextRequest) {
         existing.push({ role: "user", content: message, sender: tenant.name, time: new Date().toISOString() });
         await prisma.handoffRequest.update({ where: { id: activeHandoff.id }, data: { messages: JSON.stringify(existing) } });
 
+        // Silent: no system message, just keep the handoff ID for polling
         return Response.json({
-          reply: `已发送给管家 ✅`,
+          reply: "",
           action: { type: "MANAGER_CHAT", params: { handoffId: activeHandoff.id } },
           sessionId, tenant,
         });
