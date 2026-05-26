@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     // === Keyword-based intent pre-check ===
     const msgLower = message.toLowerCase();
     const repairKeywords = ["空调", "马桶", "冰箱", "洗衣机", "热水器", "门锁", "窗户", "水管", "漏水", "堵", "坏了", "不制冷", "不制热", "打不开", "关不上", "修", "报修", "故障", "跳闸", "断电", "没电"];
-    const handoffKeywords = ["转人工", "转接", "找管家", "联系管家", "人工客服", "不要ai", "不要机器人", "投诉", "太吵", "噪音"];
+    const handoffKeywords = ["转人工", "转接", "找管家", "联系管家", "人工客服", "人工服务", "不要ai", "不要机器人", "投诉", "太吵", "噪音", "人工", "管家服务", "客服"];
     const closeKeywords = ["结束人工", "不需要了", "关闭对话", "不用管家"];
     const isRepair = repairKeywords.some(k => msgLower.includes(k));
     const isHandoff = handoffKeywords.some(k => msgLower.includes(k));
@@ -185,6 +185,11 @@ export async function POST(req: NextRequest) {
     }
     if (!action && isHandoff) {
       action = { type: "HANDOFF", params: { summary: message } };
+    }
+
+    // Simplify reply for HANDOFF (no verbose AI)
+    if (action?.type === "HANDOFF") {
+      cleanContent = "好的，已收到您的请求，正在为您转接管家，请稍候～ 😊";
     }
 
     // Execute action
