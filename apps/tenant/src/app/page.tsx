@@ -178,10 +178,8 @@ export default function TenantChat() {
         if (data.sessionId) setSessionId(data.sessionId);
         if (data.tenant) setTenant(data.tenant);
         // Enter manager chat bridge mode
-        if (data.action?.type === "MANAGER_CHAT" && data.action?.params?.handoffId) {
+        if (data.action?.params?.handoffId) {
           setHandoffId(data.action.params.handoffId);
-        } else if (data.action?.type === "HANDOFF") {
-          setHandoffId(null); // New handoff created, start polling once claimed
         }
       }
     } catch {

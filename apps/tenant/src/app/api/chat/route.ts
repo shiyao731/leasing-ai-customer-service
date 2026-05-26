@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
           }
 
           // Create handoff request
-          await prisma.handoffRequest.create({
+          const newHandoff = await prisma.handoffRequest.create({
             data: {
               tenantName: tenant?.name || "访客",
               roomNo: tenant?.roomNo || "未知",
@@ -216,6 +216,9 @@ export async function POST(req: NextRequest) {
               assignee: managerName,
             },
           });
+
+          // Attach handoff ID to action params so frontend can poll
+          action.params.handoffId = newHandoff.id;
 
           // Notify (mock → console / real WeCom webhook)
           await sendNotification({
