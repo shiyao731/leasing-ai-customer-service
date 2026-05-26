@@ -70,29 +70,28 @@ export default function TenantChat() {
     }
   }, [tenant, messages.length]);
 
+  // Track shown message timestamps to prevent duplicates
+  const shownMsgTimes = useRef(new Set<string>());
+
   // Poll for manager messages when in handoff bridge mode
   useEffect(() => {
     if (!handoffId) return;
+    shownMsgTimes.current = new Set(); // Reset on new handoff
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/handoffs/${handoffId}/messages`);
         const data = await res.json();
         const msgs: { role: string; content: string; sender?: string; time: string }[] = data.messages || [];
-        // Find new manager messages not yet in chat
-        const managerMsgs = msgs.filter((m) => m.role === "manager");
-        if (managerMsgs.length > 0) {
-          // Check if the latest manager message is already in chat
-          const lastManagerMsg = managerMsgs[managerMsgs.length - 1];
-          const alreadyShown = messages.some(
-            (msg) => msg.role === "assistant" && msg.content.includes(lastManagerMsg.content)
-          );
-          if (!alreadyShown) {
+        // Show only new manager messages not yet displayed
+        for (const m of msgs) {
+          if (m.role === "manager" && !shownMsgTimes.current.has(m.time)) {
+            shownMsgTimes.current.add(m.time);
             setMessages((prev) => [
               ...prev,
               {
                 role: "assistant",
-                content: `【管家${lastManagerMsg.sender || ""}】${lastManagerMsg.content}`,
-                time: lastManagerMsg.time,
+                content: `【管家${m.sender || ""}】${m.content}`,
+                time: m.time,
               },
             ]);
           }
@@ -100,7 +99,7 @@ export default function TenantChat() {
       } catch {}
     }, 3000);
     return () => clearInterval(interval);
-  }, [handoffId, messages]);
+  }, [handoffId]);
 
   // Focus input
   useEffect(() => {

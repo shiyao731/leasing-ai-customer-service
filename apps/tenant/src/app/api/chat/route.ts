@@ -80,14 +80,10 @@ export async function POST(req: NextRequest) {
           data: { messages: JSON.stringify(existing) },
         });
 
-        // Return latest manager messages
-        const managerMsgs = existing.filter((m: any) => m.role === "manager").slice(-3);
-        const reply = managerMsgs.length > 0
-          ? managerMsgs.map((m: any) => `【管家${m.sender}】${m.content}`).join("\n---\n")
-          : "已转接管家，请等待回复～";
-
+        // Don't return manager messages here — polling handles delivery.
+        // Just confirm the message was sent.
         return Response.json({
-          reply,
+          reply: `已发送给管家 ✅\n等待管家回复中...`,
           action: { type: "MANAGER_CHAT", params: { handoffId: activeHandoff.id } },
           sessionId,
           tenant,
