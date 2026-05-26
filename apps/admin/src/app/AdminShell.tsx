@@ -8,6 +8,7 @@ const navItems = [
   { href: "/", label: "仪表盘", icon: "◉" },
   { href: "/orders", label: "工单管理", icon: "☰" },
   { href: "/tenants", label: "租客管理", icon: "◆" },
+  { href: "/managers", label: "管家管理", icon: "◇" },
   { href: "/collection", label: "催租管理", icon: "◇" },
   { href: "/faq", label: "FAQ编辑", icon: "▣" },
   { href: "/settings", label: "设置", icon: "◎" },
