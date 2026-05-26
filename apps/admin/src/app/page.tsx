@@ -7,7 +7,6 @@ interface DashboardData {
   orders: { pending: number; inProgress: number; completed: number };
   collections: { pending: number; reminded: number; severe: number };
   faqCount: number;
-  handoffs: { id: string; tenantName: string; messages: string; handoffAt: string; createdAt: string }[];
 }
 
 export default function Dashboard() {
@@ -48,43 +47,6 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
-
-      {/* Handoff requests (shown first if any) */}
-      {data.handoffs.length > 0 && (
-        <div className="animate-in stagger-2 bg-white rounded-2xl border border-stone-200/60 shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display text-base font-semibold text-stone-700">
-              转接请求 ({data.handoffs.length}个待处理)
-            </h3>
-            <span className="w-2 h-2 bg-rose-400 rounded-full animate-pulse" />
-          </div>
-          <div className="space-y-3">
-            {data.handoffs.map((h) => {
-              const msgs = JSON.parse(h.messages || "[]");
-              const lastMsg = msgs[msgs.length - 1]?.content?.slice(0, 100) || "";
-              return (
-                <div key={h.id} className="flex items-start gap-4 p-4 bg-rose-50/50 border border-rose-100/50 rounded-xl">
-                  <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-500 text-sm font-bold flex-shrink-0">
-                    {h.tenantName[0] || "访"}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-stone-700">{h.tenantName}</span>
-                      <span className="text-xs text-stone-400">
-                        {new Date(h.handoffAt).toLocaleString("zh-CN")}
-                      </span>
-                    </div>
-                    <p className="text-sm text-stone-500 line-clamp-2">{lastMsg}</p>
-                  </div>
-                  <span className="text-xs px-2 py-1 bg-rose-50 text-rose-500 rounded-lg flex-shrink-0">
-                    待处理
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Orders & Collections */}
       <div className="grid lg:grid-cols-2 gap-6">
