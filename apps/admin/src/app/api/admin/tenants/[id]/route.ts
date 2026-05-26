@@ -20,3 +20,29 @@ export async function GET(
 
   return Response.json({ tenant, conversations, orders });
 }
+
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const body = await req.json();
+  const data: any = {};
+
+  if (body.name !== undefined) data.name = body.name;
+  if (body.roomNo !== undefined) data.roomNo = body.roomNo;
+  if (body.phone !== undefined) data.phone = body.phone;
+  if (body.managerId !== undefined) data.managerId = body.managerId || null;
+  if (body.leaseStart) data.leaseStart = new Date(body.leaseStart);
+  if (body.leaseEnd) data.leaseEnd = new Date(body.leaseEnd);
+  if (body.monthlyRent !== undefined) data.monthlyRent = body.monthlyRent;
+  if (body.billStatus !== undefined) data.billStatus = body.billStatus;
+  if (body.overdueDays !== undefined) data.overdueDays = body.overdueDays;
+  if (body.totalDue !== undefined) data.totalDue = body.totalDue;
+
+  const tenant = await prisma.tenant.update({
+    where: { id: params.id },
+    data,
+  });
+
+  return Response.json(tenant);
+}
