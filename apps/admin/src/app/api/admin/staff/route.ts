@@ -2,7 +2,7 @@ import { prisma } from "@leasing/core";
 import { NextRequest } from "next/server";
 
 export async function GET() {
-  const staff = await prisma.maintenanceStaff.findMany({ orderBy: { createdAt: "desc" } });
+  const staff = await prisma.maintenanceStaff.findMany();
   return Response.json(staff);
 }
 

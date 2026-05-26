@@ -33,10 +33,11 @@ model Manager {
 }
 
 model MaintenanceStaff {
-  id        String @id @default(uuid())
+  id        String   @id @default(uuid())
   name      String
-  specialty String // appliance | plumbing | doorlock | other
+  specialty String   // appliance | plumbing | doorlock | other
   phone     String
+  createdAt DateTime @default(now())
 }
 
 model WorkOrder {
