@@ -55,43 +55,14 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Check for active claimed handoff → manager chat bridge
-    if (tenant) {
-      const activeHandoff = await prisma.handoffRequest.findFirst({
-        where: {
-          status: "claimed",
-          tenantName: tenant.name,
-        },
-        orderBy: { createdAt: "desc" },
-      });
+    // === Keyword-based intent pre-check (fallback when LLM misses markers) ===
+    const msgLower = message.toLowerCase();
+    const repairKeywords = ["空调", "马桶", "冰箱", "洗衣机", "热水器", "门锁", "窗户", "水管", "漏水", "堵", "坏了", "不制冷", "不制热", "打不开", "关不上", "修", "报修", "故障", "跳闸", "断电", "没电"];
+    const handoffKeywords = ["转人工", "转接", "找管家", "联系管家", "人工客服", "不要ai", "不要机器人", "投诉", "太吵", "噪音"];
+    const isRepair = repairKeywords.some(k => msgLower.includes(k));
+    const isHandoff = handoffKeywords.some(k => msgLower.includes(k));
 
-      if (activeHandoff) {
-        // Tenant message → store in handoff
-        const existing = activeHandoff.messages ? JSON.parse(activeHandoff.messages) : [];
-        existing.push({
-          role: "user",
-          content: message,
-          sender: tenant.name,
-          time: new Date().toISOString(),
-        });
-
-        await prisma.handoffRequest.update({
-          where: { id: activeHandoff.id },
-          data: { messages: JSON.stringify(existing) },
-        });
-
-        // Don't return manager messages here — polling handles delivery.
-        // Just confirm the message was sent.
-        return Response.json({
-          reply: `已发送给管家 ✅\n等待管家回复中...`,
-          action: { type: "MANAGER_CHAT", params: { handoffId: activeHandoff.id } },
-          sessionId,
-          tenant,
-        });
-      }
-    }
-
-    // RAG search
+    // RAG search — always run for business intent detection
     const faqResults = await searchFaq(message);
 
     // Load settings
@@ -140,7 +111,15 @@ export async function POST(req: NextRequest) {
     const content = response.choices[0]?.message?.content || "抱歉，我暂时无法回复。";
 
     // Parse action from response
-    const { cleanContent, action } = parseAction(content);
+    let { cleanContent, action } = parseAction(content);
+
+    // Keyword fallback: if LLM didn't add ACTION marker but message matches intents
+    if (!action && isRepair && tenant) {
+      action = { type: "CREATE_ORDER", params: { category: "other", summary: message } };
+    }
+    if (!action && isHandoff) {
+      action = { type: "HANDOFF", params: { summary: message } };
+    }
 
     // Execute action
     if (action) {
@@ -235,6 +214,24 @@ export async function POST(req: NextRequest) {
           });
           break;
         }
+      }
+    }
+
+    // If no business action AND active claimed handoff → bridge to manager
+    if (!action && tenant) {
+      const activeHandoff = await prisma.handoffRequest.findFirst({
+        where: { status: "claimed", tenantName: tenant.name },
+        orderBy: { createdAt: "desc" },
+      });
+      if (activeHandoff) {
+        const existing = activeHandoff.messages ? JSON.parse(activeHandoff.messages) : [];
+        existing.push({ role: "user", content: message, sender: tenant.name, time: new Date().toISOString() });
+        await prisma.handoffRequest.update({ where: { id: activeHandoff.id }, data: { messages: JSON.stringify(existing) } });
+        return Response.json({
+          reply: `已发送给管家 ✅\n等待管家回复中...`,
+          action: { type: "MANAGER_CHAT", params: { handoffId: activeHandoff.id } },
+          sessionId, tenant,
+        });
       }
     }
 
