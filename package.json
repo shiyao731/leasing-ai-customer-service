@@ -6,9 +6,10 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:tenant\" \"npm run dev:admin\"",
+    "dev": "concurrently \"npm run dev:tenant\" \"npm run dev:admin\" \"npm run dev:wecom\"",
     "dev:tenant": "npm -w apps/tenant run dev",
     "dev:admin": "npm -w apps/admin run dev",
+    "dev:wecom": "npm -w apps/wecom run dev",
     "db:migrate": "npm -w packages/core run db:migrate",
     "db:seed": "npm -w packages/core run db:seed",
     "db:reset": "npm -w packages/core run db:reset"

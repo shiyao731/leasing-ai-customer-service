@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.bg-wecom-green { background-color: #07C160; }
+.text-wecom-green { color: #07C160; }

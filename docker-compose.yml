@@ -28,3 +28,14 @@ services:
       - DATABASE_URL=file:/data/leasing.db
     volumes:
       - ./data:/data
+
+  wecom:
+    build:
+      context: .
+      dockerfile: apps/wecom/Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - DATABASE_URL=file:/data/leasing.db
+    volumes:
+      - ./data:/data

@@ -29,7 +29,7 @@ export default function WecomPage() {
   const [tab, setTab] = useState<"mine" | "group">("mine");
 
   const load = () => {
-    fetch("/api/admin/handoffs")
+    fetch("/api/handoffs")
       .then((r) => r.json())
       .then((data) => {
         setHandoffs(data.handoffs);
