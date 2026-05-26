@@ -2,7 +2,7 @@ import { prisma } from "@leasing/core";
 
 export async function GET() {
   const handoffs = await prisma.handoffRequest.findMany({
-    where: { status: { in: ["pending", "assigned"] } },
+    where: { status: { not: "closed" } },
     orderBy: { createdAt: "desc" },
   });
 

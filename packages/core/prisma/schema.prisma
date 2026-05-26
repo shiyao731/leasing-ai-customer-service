@@ -94,6 +94,7 @@ model HandoffRequest {
   status         String   @default("pending") // pending | assigned | claimed | closed
   assignee       String?  // 指派管家姓名
   conversationId String?
+  messages       String   @default("[]") // JSON chat between manager & tenant
   createdAt      DateTime @default(now())
   claimedAt      DateTime?
   claimedBy      String?

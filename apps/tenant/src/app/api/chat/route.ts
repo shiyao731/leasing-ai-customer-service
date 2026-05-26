@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "消息不能为空" }, { status: 400 });
     }
 
-    // Load tenant context
+    // Load tenant context first
     let tenant = null;
     if (tenantId) {
       tenant = await prisma.tenant.findUnique({
@@ -53,6 +53,46 @@ export async function POST(req: NextRequest) {
           activated: true,
         },
       });
+    }
+
+    // Check for active claimed handoff → manager chat bridge
+    if (tenant) {
+      const activeHandoff = await prisma.handoffRequest.findFirst({
+        where: {
+          status: "claimed",
+          tenantName: tenant.name,
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (activeHandoff) {
+        // Tenant message → store in handoff
+        const existing = activeHandoff.messages ? JSON.parse(activeHandoff.messages) : [];
+        existing.push({
+          role: "user",
+          content: message,
+          sender: tenant.name,
+          time: new Date().toISOString(),
+        });
+
+        await prisma.handoffRequest.update({
+          where: { id: activeHandoff.id },
+          data: { messages: JSON.stringify(existing) },
+        });
+
+        // Return latest manager messages
+        const managerMsgs = existing.filter((m: any) => m.role === "manager").slice(-3);
+        const reply = managerMsgs.length > 0
+          ? managerMsgs.map((m: any) => `【管家${m.sender}】${m.content}`).join("\n---\n")
+          : "已转接管家，请等待回复～";
+
+        return Response.json({
+          reply,
+          action: { type: "MANAGER_CHAT", params: { handoffId: activeHandoff.id } },
+          sessionId,
+          tenant,
+        });
+      }
     }
 
     // RAG search
