@@ -55,13 +55,79 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // === Keyword-based intent pre-check (fallback when LLM misses markers) ===
+    // === Keyword-based intent pre-check ===
     const msgLower = message.toLowerCase();
     const repairKeywords = ["空调", "马桶", "冰箱", "洗衣机", "热水器", "门锁", "窗户", "水管", "漏水", "堵", "坏了", "不制冷", "不制热", "打不开", "关不上", "修", "报修", "故障", "跳闸", "断电", "没电"];
     const handoffKeywords = ["转人工", "转接", "找管家", "联系管家", "人工客服", "不要ai", "不要机器人", "投诉", "太吵", "噪音"];
+    const closeKeywords = ["结束人工", "不需要了", "关闭对话", "不用管家"];
     const isRepair = repairKeywords.some(k => msgLower.includes(k));
     const isHandoff = handoffKeywords.some(k => msgLower.includes(k));
+    const isClose = closeKeywords.some(k => msgLower.includes(k));
 
+    // === Bridge check: if claimed handoff exists, route to manager (AI stays silent) ===
+    let activeHandoff: any = null;
+    if (tenant) {
+      activeHandoff = await prisma.handoffRequest.findFirst({
+        where: { status: "claimed", tenantName: tenant.name },
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (activeHandoff) {
+        // Close handoff if tenant says goodbye
+        if (isClose) {
+          await prisma.handoffRequest.update({
+            where: { id: activeHandoff.id },
+            data: { status: "closed" },
+          });
+          return Response.json({
+            reply: "已结束人工对话～还有什么可以帮您的吗？😊",
+            action: { type: "MANAGER_CHAT", params: { handoffId: activeHandoff.id } },
+            sessionId, tenant,
+          });
+        }
+
+        // Repair in bridge mode: create order silently, then bridge to manager
+        if (isRepair) {
+          const orderCount = await prisma.workOrder.count();
+          const now = new Date();
+          const dateStr = `${String(now.getFullYear()).slice(2)}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}`;
+          const orderNo = `AP001${dateStr}${String(orderCount + 1).padStart(3, "0")}`;
+          await prisma.workOrder.create({
+            data: {
+              orderNo, tenantName: tenant.name, roomNo: tenant.roomNo, phone: tenant.phone,
+              category: "other", description: message, aiSummary: message, status: "pending",
+            },
+          });
+        }
+
+        // New handoff request in bridge mode
+        if (isHandoff) {
+          await prisma.handoffRequest.create({
+            data: {
+              tenantName: tenant.name, roomNo: tenant.roomNo, phone: tenant.phone,
+              summary: message, status: "pending", assignee: null,
+            },
+          });
+        }
+
+        // Bridge message to manager (all messages in bridge mode)
+        const existing = activeHandoff.messages ? JSON.parse(activeHandoff.messages) : [];
+        existing.push({ role: "user", content: message, sender: tenant.name, time: new Date().toISOString() });
+        await prisma.handoffRequest.update({ where: { id: activeHandoff.id }, data: { messages: JSON.stringify(existing) } });
+
+        const bridgeReply = isRepair
+          ? `已帮您记录报修并通知管家 ✅\n工单已自动创建，管家会尽快安排处理～`
+          : `已发送给管家 ✅\n等待管家回复中...`;
+
+        return Response.json({
+          reply: bridgeReply,
+          action: { type: "MANAGER_CHAT", params: { handoffId: activeHandoff.id } },
+          sessionId, tenant,
+        });
+      }
+    }
+
+    // === AI mode (no active claimed handoff) ===
     // RAG search — always run for business intent detection
     const faqResults = await searchFaq(message);
 
@@ -214,24 +280,6 @@ export async function POST(req: NextRequest) {
           });
           break;
         }
-      }
-    }
-
-    // If no business action AND active claimed handoff → bridge to manager
-    if (!action && tenant) {
-      const activeHandoff = await prisma.handoffRequest.findFirst({
-        where: { status: "claimed", tenantName: tenant.name },
-        orderBy: { createdAt: "desc" },
-      });
-      if (activeHandoff) {
-        const existing = activeHandoff.messages ? JSON.parse(activeHandoff.messages) : [];
-        existing.push({ role: "user", content: message, sender: tenant.name, time: new Date().toISOString() });
-        await prisma.handoffRequest.update({ where: { id: activeHandoff.id }, data: { messages: JSON.stringify(existing) } });
-        return Response.json({
-          reply: `已发送给管家 ✅\n等待管家回复中...`,
-          action: { type: "MANAGER_CHAT", params: { handoffId: activeHandoff.id } },
-          sessionId, tenant,
-        });
       }
     }
 
