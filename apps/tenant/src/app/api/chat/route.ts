@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       });
 
       if (activeHandoff) {
-        // Close handoff if tenant says goodbye
+        // Only "goodbye" is handled specially — everything else goes to manager
         if (isClose) {
           await prisma.handoffRequest.update({
             where: { id: activeHandoff.id },
@@ -81,46 +81,18 @@ export async function POST(req: NextRequest) {
           });
           return Response.json({
             reply: "已结束人工对话～还有什么可以帮您的吗？😊",
-            action: { type: "MANAGER_CHAT", params: { handoffId: activeHandoff.id } },
+            action: null, // No action → AI resumes
             sessionId, tenant,
           });
         }
 
-        // Repair in bridge mode: create order silently, then bridge to manager
-        if (isRepair) {
-          const orderCount = await prisma.workOrder.count();
-          const now = new Date();
-          const dateStr = `${String(now.getFullYear()).slice(2)}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}`;
-          const orderNo = `AP001${dateStr}${String(orderCount + 1).padStart(3, "0")}`;
-          await prisma.workOrder.create({
-            data: {
-              orderNo, tenantName: tenant.name, roomNo: tenant.roomNo, phone: tenant.phone,
-              category: "other", description: message, aiSummary: message, status: "pending",
-            },
-          });
-        }
-
-        // New handoff request in bridge mode
-        if (isHandoff) {
-          await prisma.handoffRequest.create({
-            data: {
-              tenantName: tenant.name, roomNo: tenant.roomNo, phone: tenant.phone,
-              summary: message, status: "pending", assignee: null,
-            },
-          });
-        }
-
-        // Bridge message to manager (all messages in bridge mode)
+        // Pure forwarding: all messages go to manager, no AI interference
         const existing = activeHandoff.messages ? JSON.parse(activeHandoff.messages) : [];
         existing.push({ role: "user", content: message, sender: tenant.name, time: new Date().toISOString() });
         await prisma.handoffRequest.update({ where: { id: activeHandoff.id }, data: { messages: JSON.stringify(existing) } });
 
-        const bridgeReply = isRepair
-          ? `已帮您记录报修并通知管家 ✅\n工单已自动创建，管家会尽快安排处理～`
-          : `已发送给管家 ✅\n等待管家回复中...`;
-
         return Response.json({
-          reply: bridgeReply,
+          reply: `已发送给管家 ✅`,
           action: { type: "MANAGER_CHAT", params: { handoffId: activeHandoff.id } },
           sessionId, tenant,
         });
