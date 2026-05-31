@@ -47,7 +47,7 @@ export async function searchFaq(query: string, topK = 3): Promise<FaqResult[]> {
   });
 
   return scored
-    .filter((f) => f.similarity > 0.1)
+    .filter((f) => f.similarity > 0.2)
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, topK);
 }

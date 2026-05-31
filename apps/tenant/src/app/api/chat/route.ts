@@ -35,11 +35,14 @@ function parseAction(content: string): {
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, tenantId, sessionId } = await req.json();
+    const { message, tenantId, sessionId, images } = await req.json();
 
-    if (!message?.trim()) {
+    if (!message?.trim() && (!images || images.length === 0)) {
       return Response.json({ error: "消息不能为空" }, { status: 400 });
     }
+
+    // When only images uploaded without text, provide context for AI
+    const effectiveMessage = message?.trim() || "[上传了现场照片]";
 
     // Load tenant context first
     let tenant = null;
@@ -56,7 +59,7 @@ export async function POST(req: NextRequest) {
     }
 
     // === Keyword-based intent pre-check ===
-    const msgLower = message.toLowerCase();
+    const msgLower = effectiveMessage.toLowerCase();
     const repairKeywords = ["空调", "马桶", "冰箱", "洗衣机", "热水器", "门锁", "窗户", "水管", "漏水", "堵", "坏了", "不制冷", "不制热", "打不开", "关不上", "修", "报修", "故障", "跳闸", "断电", "没电"];
     const handoffKeywords = ["转人工", "转接", "找管家", "联系管家", "人工客服", "人工服务", "不要ai", "不要机器人", "投诉", "太吵", "噪音", "人工", "管家服务", "客服"];
     const closeKeywords = ["结束人工", "不需要了", "关闭对话", "不用管家"];
@@ -88,7 +91,7 @@ export async function POST(req: NextRequest) {
 
         // Pure forwarding: all messages go to manager, no AI interference
         const existing = activeHandoff.messages ? JSON.parse(activeHandoff.messages) : [];
-        existing.push({ role: "user", content: message, sender: tenant.name, time: new Date().toISOString() });
+        existing.push({ role: "user", content: effectiveMessage, sender: tenant.name, time: new Date().toISOString() });
         await prisma.handoffRequest.update({ where: { id: activeHandoff.id }, data: { messages: JSON.stringify(existing) } });
 
         // Silent: no system message, just keep the handoff ID for polling
@@ -102,7 +105,7 @@ export async function POST(req: NextRequest) {
 
     // === AI mode (no active claimed handoff) ===
     // RAG search — always run for business intent detection
-    const faqResults = await searchFaq(message);
+    const faqResults = await searchFaq(effectiveMessage);
 
     // Load settings
     const settings = await prisma.settings.findUnique({
@@ -137,7 +140,7 @@ export async function POST(req: NextRequest) {
             .slice(-10)
             .map((m) => ({ role: m.role, content: m.content }))
         : []),
-      { role: "user", content: message },
+      { role: "user", content: effectiveMessage },
     ];
 
     const response = await openai.chat.completions.create({
@@ -152,12 +155,9 @@ export async function POST(req: NextRequest) {
     // Parse action from response
     let { cleanContent, action } = parseAction(content);
 
-    // Keyword fallback: if LLM didn't add ACTION marker but message matches intents
-    if (!action && isRepair && tenant) {
-      action = { type: "CREATE_ORDER", params: { category: "other", summary: message } };
-    }
+    // Keyword fallback: only for handoff — repair orders are AI-driven multi-turn
     if (!action && isHandoff) {
-      action = { type: "HANDOFF", params: { summary: message } };
+      action = { type: "HANDOFF", params: { summary: effectiveMessage } };
     }
 
     // Simplify reply for HANDOFF (no verbose AI)
@@ -166,6 +166,23 @@ export async function POST(req: NextRequest) {
     }
 
     // Execute action
+
+    // === Accumulate pending images from recent conversation ===
+    let allImages = "[]";
+    {
+      let pending: string[] = [];
+      for (const m of history) {
+        if (m.role === "system" && m.content.startsWith("[PENDING_IMAGES:")) {
+          try {
+            const paths = JSON.parse(m.content.slice("[PENDING_IMAGES:".length, -1));
+            pending.push(...paths);
+          } catch {}
+        }
+      }
+      if (images?.length) pending.push(...images);
+      allImages = pending.length > 0 ? JSON.stringify(pending) : "[]";
+    }
+
     if (action) {
       switch (action.type) {
         case "CREATE_ORDER": {
@@ -180,9 +197,12 @@ export async function POST(req: NextRequest) {
               roomNo: tenant?.roomNo || "未知",
               phone: tenant?.phone || "未知",
               category: action.params.category || "other",
-              description: message,
-              aiSummary: action.params.summary || message,
-              status: isNightMode ? "pending" : "pending",
+              description: action.params.description || effectiveMessage,
+              aiSummary: action.params.summary || effectiveMessage,
+              contactPhone: action.params.contactPhone || tenant?.phone || "未知",
+              visitTime: action.params.visitTime || "",
+              images: allImages,
+              status: "pending",
             },
           });
 
@@ -191,14 +211,14 @@ export async function POST(req: NextRequest) {
               type: "night_urgent",
               tenantName: tenant?.name || "未知",
               roomNo: tenant?.roomNo || "未知",
-              summary: action.params.summary || message,
+              summary: action.params.summary || effectiveMessage,
             });
           } else {
             await sendNotification({
               type: "work_order",
               tenantName: tenant?.name || "未知",
               roomNo: tenant?.roomNo || "未知",
-              summary: action.params.summary || message,
+              summary: action.params.summary || effectiveMessage,
             });
           }
           break;
@@ -254,7 +274,7 @@ export async function POST(req: NextRequest) {
             type: "night_urgent",
             tenantName: tenant?.name || "未知",
             roomNo: tenant?.roomNo || "未知",
-            summary: action.params.summary || message,
+            summary: action.params.summary || effectiveMessage,
           });
           break;
         }
@@ -262,11 +282,21 @@ export async function POST(req: NextRequest) {
     }
 
     // Save or update conversation
-    const newRound = [
+    // Embed pending images as system message if no CREATE_ORDER this turn
+    const hasCreateOrder = action?.type === "CREATE_ORDER";
+    const newMessages = [
       ...history,
-      { role: "user", content: message, time: new Date().toISOString() },
+      { role: "user", content: effectiveMessage, time: new Date().toISOString() },
       { role: "assistant", content: cleanContent, time: new Date().toISOString() },
     ];
+    if (images?.length && !hasCreateOrder) {
+      newMessages.push({
+        role: "system",
+        content: `[PENDING_IMAGES:${JSON.stringify(images)}]`,
+        time: new Date().toISOString(),
+      });
+    }
+    const newRound = newMessages;
 
     if (sessionId) {
       await prisma.conversation.update({
