@@ -49,10 +49,13 @@ model WorkOrder {
   category    String   // appliance | plumbing | doorlock | other
   description String
   aiSummary   String   @default("")
-  status      String   @default("pending") // pending | assigned | in_progress | completed | cancelled
-  assignee    String?
-  createdAt   DateTime @default(now())
-  completedAt DateTime?
+  status       String   @default("pending") // pending | assigned | in_progress | completed | cancelled
+  assignee     String?
+  contactPhone String   @default("")   // confirmed contact phone for this order
+  visitTime    String   @default("")   // preferred visit time (natural language)
+  images       String   @default("[]") // JSON array of uploaded image paths
+  createdAt    DateTime @default(now())
+  completedAt  DateTime?
 }
 
 model Conversation {

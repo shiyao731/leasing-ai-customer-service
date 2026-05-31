@@ -23,6 +23,9 @@ export interface WorkOrderItem {
   aiSummary: string;
   status: string;
   assignee: string | null;
+  contactPhone: string;
+  visitTime: string;
+  images: string;
   createdAt: Date;
   completedAt: Date | null;
 }
