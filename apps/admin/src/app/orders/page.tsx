@@ -29,6 +29,12 @@ export default function OrdersPage() {
   const [showEdit, setShowEdit] = useState<any | null>(null);
   const [editForm, setEditForm] = useState<any>({});
 
+  // Create state
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState<any>({
+    category: "other", status: "pending",
+  });
+
   const load = () => {
     fetch(`/api/admin/orders${filter !== "all" ? `?status=${filter}` : ""}`)
       .then((r) => r.json())
@@ -57,6 +63,17 @@ export default function OrdersPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
+    load();
+  }
+
+  async function createOrder() {
+    await fetch("/api/admin/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(createForm),
+    });
+    setShowCreate(false);
+    setCreateForm({ category: "other", status: "pending" });
     load();
   }
 
@@ -89,7 +106,18 @@ export default function OrdersPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <h2 className="font-display text-2xl font-bold text-stone-800">工单管理</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-2xl font-bold text-stone-800">工单管理</h2>
+        <button
+          onClick={() => {
+            setCreateForm({ category: "other", status: "pending" });
+            setShowCreate(true);
+          }}
+          className="px-4 py-2 text-sm font-medium text-white bg-amber-500 rounded-xl hover:bg-amber-600 transition-colors"
+        >
+          + 创建工单
+        </button>
+      </div>
 
       {/* Filters */}
       <div className="flex gap-2 flex-wrap">
@@ -485,6 +513,116 @@ export default function OrdersPage() {
                 className="flex-1 py-2.5 text-sm font-medium text-white bg-amber-500 rounded-xl hover:bg-amber-600 transition-all"
               >
                 保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="font-display text-lg font-semibold text-stone-800 mb-4">创建工单</h3>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-xs text-stone-400">租客姓名 *</span>
+                  <input
+                    value={createForm.tenantName || ""}
+                    onChange={(e) => setCreateForm({ ...createForm, tenantName: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded-xl focus:border-amber-300 focus:ring-2 focus:ring-amber-100 outline-none"
+                    placeholder="张三"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs text-stone-400">房号 *</span>
+                  <input
+                    value={createForm.roomNo || ""}
+                    onChange={(e) => setCreateForm({ ...createForm, roomNo: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded-xl focus:border-amber-300 focus:ring-2 focus:ring-amber-100 outline-none"
+                    placeholder="3-1206"
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-xs text-stone-400">联系电话</span>
+                  <input
+                    value={createForm.contactPhone || createForm.phone || ""}
+                    onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value, contactPhone: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded-xl focus:border-amber-300 focus:ring-2 focus:ring-amber-100 outline-none"
+                    placeholder="18800001234"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs text-stone-400">维修类别</span>
+                  <select
+                    value={createForm.category || "other"}
+                    onChange={(e) => setCreateForm({ ...createForm, category: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded-xl focus:border-amber-300 focus:ring-2 focus:ring-amber-100 outline-none"
+                  >
+                    {Object.entries(categoryMap).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <label className="block">
+                <span className="text-xs text-stone-400">期望上门时间</span>
+                <input
+                  value={createForm.visitTime || ""}
+                  onChange={(e) => setCreateForm({ ...createForm, visitTime: e.target.value })}
+                  className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded-xl focus:border-amber-300 focus:ring-2 focus:ring-amber-100 outline-none"
+                  placeholder="如：明天上午9点"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-stone-400">问题描述</span>
+                <textarea
+                  value={createForm.description || ""}
+                  onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+                  rows={3}
+                  className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded-xl focus:border-amber-300 focus:ring-2 focus:ring-amber-100 outline-none resize-none"
+                  placeholder="租客反馈的问题描述"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-stone-400">AI 摘要（简短描述）</span>
+                <input
+                  value={createForm.aiSummary || ""}
+                  onChange={(e) => setCreateForm({ ...createForm, aiSummary: e.target.value })}
+                  className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded-xl focus:border-amber-300 focus:ring-2 focus:ring-amber-100 outline-none"
+                  placeholder="如：客厅空调不制冷"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-stone-400">指派师傅（可选）</span>
+                <select
+                  value={createForm.assignee || ""}
+                  onChange={(e) => setCreateForm({ ...createForm, assignee: e.target.value || null })}
+                  className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded-xl focus:border-amber-300 focus:ring-2 focus:ring-amber-100 outline-none"
+                >
+                  <option value="">暂不指派</option>
+                  {staff.map((s) => (
+                    <option key={s.name} value={s.name}>{s.name}（{categoryMap[s.specialty] || s.specialty}）</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => { setShowCreate(false); setCreateForm({ category: "other", status: "pending" }); }}
+                className="flex-1 py-2.5 text-sm text-stone-400 bg-stone-50 rounded-xl hover:bg-stone-100"
+              >
+                取消
+              </button>
+              <button
+                onClick={createOrder}
+                disabled={!createForm.tenantName?.trim() || !createForm.roomNo?.trim()}
+                className="flex-1 py-2.5 text-sm font-medium text-white bg-amber-500 rounded-xl hover:bg-amber-600 disabled:opacity-30 transition-all"
+              >
+                创建
               </button>
             </div>
           </div>
