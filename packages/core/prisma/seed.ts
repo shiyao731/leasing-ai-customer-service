@@ -117,14 +117,19 @@ async function main() {
   const orders = [
     {
       orderNo: "AP001250310001", tenantName: "张三", roomNo: "3-1206", phone: "18800001234",
-      category: "appliance", description: "客厅空调不制冷", aiSummary: "客厅挂机空调不制冷",
-      status: "completed", assignee: "老刘", completedAt: new Date("2025-03-11"),
+      category: "appliance", description: "客厅空调不制冷，开机后吹出来的风是常温的，已经开了半小时还是一样", aiSummary: "客厅挂机空调不制冷",
+      status: "completed", assignee: "老刘",
+      contactPhone: "18800001234", visitTime: "2025-03-11 上午",
+      images: "[]",
+      completedAt: new Date("2025-03-11"),
       createdAt: new Date("2025-03-10"),
     },
     {
       orderNo: "AP001250310002", tenantName: "李四", roomNo: "5-0803", phone: "13900005678",
       category: "plumbing", description: "马桶堵塞不下水", aiSummary: "马桶堵塞严重，需要疏通",
       status: "in_progress", assignee: "小陈",
+      contactPhone: "13900005678", visitTime: "明天下午3点",
+      images: "[]",
       createdAt: new Date("2025-03-15"),
     },
     {

@@ -37,6 +37,11 @@ export default function TenantChat() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [handoffId, setHandoffId] = useState<string | null>(null);
 
+  // Image upload state
+  const [uploadedImages, setUploadedImages] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
@@ -138,8 +143,24 @@ export default function TenantChat() {
     }
   }
 
-  async function sendMessage(text: string) {
-    if (!text.trim() || loading) return;
+  async function uploadImages(files: File[]): Promise<string[]> {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      files.forEach((f) => formData.append("files", f));
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      return data.paths || [];
+    } catch {
+      return [];
+    } finally {
+      setUploading(false);
+      setUploadedImages([]);
+    }
+  }
+
+  async function sendMessage(text: string, imagePaths?: string[]) {
+    if (!text.trim() && !imagePaths?.length) return;
 
     const userMsg: Message = {
       role: "user",
@@ -159,6 +180,7 @@ export default function TenantChat() {
           message: text,
           tenantId: tenant && tenant !== "guest" ? tenant.id : undefined,
           sessionId,
+          images: imagePaths || [],
         }),
       });
 
@@ -195,10 +217,22 @@ export default function TenantChat() {
     }
   }
 
+  async function handleSend() {
+    const text = input.trim();
+    if (!text && uploadedImages.length === 0) return;
+    if (loading || uploading) return;
+
+    let imagePaths: string[] = [];
+    if (uploadedImages.length > 0) {
+      imagePaths = await uploadImages(uploadedImages);
+    }
+    sendMessage(text, imagePaths);
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage(input);
+      handleSend();
     }
   }
 
@@ -423,14 +457,54 @@ export default function TenantChat() {
           </div>
         )}
 
+        {/* Image preview */}
+        {uploadedImages.length > 0 && (
+          <div className="relative z-10 px-3 pb-1 flex gap-2 overflow-x-auto">
+            {uploadedImages.map((file, i) => (
+              <div key={i} className="relative flex-shrink-0">
+                <img
+                  src={URL.createObjectURL(file)}
+                  alt=""
+                  className="w-16 h-16 object-cover rounded-lg border border-stone-200"
+                />
+                <button
+                  onClick={() => setUploadedImages(prev => prev.filter((_, j) => j !== i))}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-stone-600 text-white rounded-full text-[10px] flex items-center justify-center"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Input bar */}
         <div className="relative z-10 px-3 py-3 bg-white/60 backdrop-blur border-t border-stone-200/50">
           <div className="flex items-end gap-2">
-            <button className="flex-shrink-0 w-9 h-9 flex items-center justify-center text-stone-400 hover:text-amber-500 transition-colors">
+            {/* Camera / image upload */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading || uploading}
+              className="flex-shrink-0 w-9 h-9 flex items-center justify-center text-stone-400 hover:text-amber-500 transition-colors disabled:opacity-30"
+            >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" />
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
               </svg>
             </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                setUploadedImages(prev => [...prev, ...files]);
+                e.target.value = "";
+              }}
+            />
             <div className="flex-1 bg-stone-50 rounded-2xl border border-stone-200/60 focus-within:border-amber-300 focus-within:ring-2 focus-within:ring-amber-100 transition-all">
               <input
                 ref={inputRef}
@@ -439,13 +513,13 @@ export default function TenantChat() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="输入消息..."
-                disabled={loading}
+                disabled={loading || uploading}
                 className="w-full bg-transparent px-4 py-2.5 text-[14px] text-stone-700 placeholder-stone-300 outline-none disabled:opacity-50"
               />
             </div>
             <button
-              onClick={() => sendMessage(input)}
-              disabled={!input.trim() || loading}
+              onClick={handleSend}
+              disabled={(!input.trim() && uploadedImages.length === 0) || loading || uploading}
               className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm hover:shadow-md hover:scale-105 active:scale-95 transition-all disabled:opacity-30 disabled:hover:scale-100 disabled:shadow-sm"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
