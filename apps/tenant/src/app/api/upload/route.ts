@@ -5,7 +5,7 @@ import { randomUUID } from "crypto";
 
 export const runtime = "nodejs";
 
-const UPLOAD_DIR = path.join(process.cwd(), "..", "..", "..", "data", "uploads");
+const UPLOAD_DIR = path.join(process.cwd(), "..", "..", "data", "uploads");
 
 export async function POST(req: NextRequest) {
   try {

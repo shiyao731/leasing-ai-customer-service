@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: { path: string[] } }
 ) {
   const filePath = path.join(
-    process.cwd(), "..", "..", "..", "data", "uploads",
+    process.cwd(), "..", "..", "data", "uploads",
     ...params.path
   );
   try {

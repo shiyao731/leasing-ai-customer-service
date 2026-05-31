@@ -1,0 +1,34 @@
+{
+  "categories": {
+    "exterior": {
+      "label": "公寓外观",
+      "photos": [
+        "00d1d64e76c6eec9090bea561efea086.jpg",
+        "3374f12ad10063b206871a11edae287b.jpg",
+        "42ea531136c25fee2f6e92d986ca9589.png",
+        "c98e906eec92ddcd317e6dc1913a1574.jpg"
+      ]
+    },
+    "frontdesk": {
+      "label": "前台大堂",
+      "photos": [
+        "d2b9206253dfb536284b931d4e16c260.jpg"
+      ]
+    },
+    "gym": {
+      "label": "健身房",
+      "photos": [
+        "85bb2233-945b-45ad-8d50-86855c3dc416.jpg"
+      ]
+    },
+    "facilities": {
+      "label": "公共区域",
+      "photos": [
+        "7fb79267-21ba-4f99-a576-9fa19dcf9acc.jpg",
+        "1295e40a-6b98-4a25-b357-a517601f2860.jpg",
+        "e1e0add6-46d1-49dc-8284-26da4dc61eb5.jpg",
+        "fb7d8e79-8958-4f3e-a7d3-f7cdd1be8603.jpg"
+      ]
+    }
+  }
+}

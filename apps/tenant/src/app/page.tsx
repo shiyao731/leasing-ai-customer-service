@@ -42,6 +42,10 @@ export default function TenantChat() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Gallery state
+  const [gallery, setGallery] = useState<{ label: string; photos: { src: string }[] }[] | null>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
@@ -201,6 +205,13 @@ export default function TenantChat() {
         }
         if (data.sessionId) setSessionId(data.sessionId);
         if (data.tenant) setTenant(data.tenant);
+        // Show gallery
+        if (data.action?.type === "SHOW_GALLERY") {
+          const cat = data.action.params.category || "all";
+          fetch(`/api/gallery?category=${cat}`)
+            .then(r => r.json())
+            .then(g => setGallery(g));
+        }
         // Enter manager chat bridge mode
         if (data.action?.params?.handoffId) {
           setHandoffId(data.action.params.handoffId);
@@ -528,6 +539,60 @@ export default function TenantChat() {
             </button>
           </div>
         </div>
+
+        {/* Gallery Modal */}
+        {gallery && (
+          <div className="absolute inset-0 z-30 flex flex-col bg-white">
+            <header className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
+              <h2 className="text-[15px] font-semibold text-stone-800">公寓相册</h2>
+              <button
+                onClick={() => setGallery(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-stone-400 hover:bg-stone-100"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </header>
+            <div className="flex-1 overflow-y-auto p-4">
+              {gallery.map((group, gi) => (
+                <div key={gi} className="mb-5">
+                  <h3 className="text-sm font-medium text-stone-600 mb-3">{group.label}</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {group.photos.map((p, pi) => (
+                      <button
+                        key={pi}
+                        onClick={() => setLightbox(p.src)}
+                        className="aspect-square rounded-xl overflow-hidden bg-stone-100 hover:opacity-90 transition-opacity"
+                      >
+                        <img src={p.src} alt={group.label} className="w-full h-full object-cover" loading="lazy" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Lightbox */}
+        {lightbox && (
+          <div
+            className="absolute inset-0 z-40 bg-black/95 flex items-center justify-center"
+            onClick={() => setLightbox(null)}
+          >
+            <button
+              onClick={() => setLightbox(null)}
+              className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <img
+              src={lightbox}
+              alt=""
+              className="max-w-full max-h-full object-contain p-4"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

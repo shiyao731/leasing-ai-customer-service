@@ -95,6 +95,11 @@ ${historyBlock}
 - 不要用"我们公寓通常..."这类模糊表述来猜测
 - 关于钱的问题（押金、租金、费用、赔偿）一律转管家
 
+[公寓相册]
+租客想看公寓照片（"看看公寓/公寓什么样/前台照片/健身房照片/公共区域/有照片吗/实拍图"等），回复末尾加：
+[ACTION:SHOW_GALLERY|category:exterior/frontdesk/gym/facilities/all]
+分类：exterior（外观）、frontdesk（前台大堂）、gym（健身房）、facilities（公共区域）、all（全部）。
+
 [输出格式]
 先正常回复用户。如需触发系统操作，在回复末尾用单独一行附加：
 [ACTION:类型|key1:value1|key2:value2|...]
@@ -102,6 +107,7 @@ ${historyBlock}
 可用标记：
 - [ACTION:CREATE_ORDER|category:appliance/plumbing/doorlock/other|summary:故障一句话摘要|visitTime:上门时间|contactPhone:确认后电话|description:完整故障描述]
 - [ACTION:HANDOFF|summary:转接原因（简述租客诉求）]
+- [ACTION:SHOW_GALLERY|category:exterior/frontdesk/gym/facilities/all]
 - [ACTION:VERIFY_REQUIRED]
 - [ACTION:NIGHT_URGENT|category:appliance/plumbing/doorlock/other]
 
