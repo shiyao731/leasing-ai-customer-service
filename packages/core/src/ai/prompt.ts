@@ -18,10 +18,31 @@ export function buildSystemPrompt(ctx: PromptContext): string {
           .join("\n")
       : "（未匹配到相关FAQ，不要编造答案，告知用户转接管家获取帮助）";
 
-  const tenantBlock = ctx.tenant
-    ? `- 租客：${ctx.tenant.name} | 房号：${ctx.tenant.roomNo} | 手机：${ctx.tenant.phone}（已激活）
-- 账单状态：${ctx.tenant.billStatus === "overdue" ? `逾期${ctx.tenant.overdueDays}天，欠费¥${ctx.tenant.totalDue}` : "正常"}`
-    : "- 租客未激活，无法获取个人信息";
+  let tenantBlock: string;
+  if (ctx.tenant) {
+    const t = ctx.tenant;
+    // Calculate payment due day from lease start
+    const leaseDay = new Date(t.leaseStart).getDate();
+    const dueDay = leaseDay - 1;
+    const dueDayStr = dueDay === 0 ? "每月最后一天" : `每月${dueDay}号`;
+
+    const rentInfo = `- 月租金：¥${t.monthlyRent} | 合同起始日：${new Date(t.leaseStart).toLocaleDateString("zh-CN")}
+- 交租日：${dueDayStr}前缴纳当月房租`;
+
+    let statusLine: string;
+    if (t.billStatus === "overdue") {
+      const months = Math.round(t.totalDue / t.monthlyRent);
+      statusLine = `⚠️ 当前状态：已逾期${t.overdueDays}天，累计欠费¥${t.totalDue}（约${months}个月）`;
+    } else {
+      statusLine = "✓ 当前状态：当月房租已缴清";
+    }
+
+    tenantBlock = `- 租客：${t.name} | 房号：${t.roomNo} | 手机：${t.phone}（已激活）
+${rentInfo}
+${statusLine}`;
+  } else {
+    tenantBlock = "- 租客未激活，无法获取个人信息";
+  }
 
   const modeBlock = ctx.isNightMode ? "夜间模式（管家已下班）" : "白天模式";
 
@@ -40,7 +61,7 @@ export function buildSystemPrompt(ctx: PromptContext): string {
 [能力范围 - 你只能处理以下事项]
 ✅ FAQ知识问答（WiFi/快递/宠物/健身房等，仅限参考知识中有的内容）
 ✅ 报修工单创建（家电/水电/门锁/其他故障，按多轮流程收集信息）
-✅ 账单查询（仅限已激活租客，告知账单状态和金额）
+✅ 租金和账单查询（已激活租客：月租金、交租日、欠费情况；未激活引导验证）
 ✅ 简单问候和闲聊
 
 ❌ 超出范围（直接转接管家，不要尝试回答）：
@@ -62,7 +83,12 @@ ${historyBlock}
 - FAQ匹配/问候闲聊 → 用参考知识回答；如果参考知识中确实没有答案，不要说"不清楚请稍等"然后编造，直接说"这个问题我帮您转接管家详细解答～"并加 HANDOFF 标记
 - 租客说"转人工/找管家/人工客服"等 → 直接转接，加 HANDOFF 标记
 - 租客问的是超出能力范围的问题（见上面❌列表）→ 一句话说明需要转接管家，加 HANDOFF 标记
-- 催租/账单查询 → 租客未激活则引导验证；已激活则直接告知账单状态
+- 租金查询（"月租金多少/房租多少钱"）→ 已激活租客直接告知月租金金额；未激活引导验证
+- 交租时间（"什么时候交租/几号交"）→ 已激活租客根据上文中的交租日给出具体截止日期；未激活引导验证
+- 账单/欠费查询（"我欠费了吗/欠多少"）→ 已激活租客直接告知当前状态：
+    · 已缴清 → "您当月房租已缴清，下次交租请在{交租日}前缴纳"
+    · 有逾期 → 告知逾期天数和欠费金额，语气温和提醒尽快缴纳
+- 账单和租金相关问题全部基于上文[当前上下文]中的真实数据，不要编造
 - 投诉意图 → 安抚一句 + 加 HANDOFF 标记（summary注明投诉内容）
 - 紧急关键词（漏水/爆管/断电/燃气/着火）→ 正常回复同时加 NIGHT_URGENT 标记
 - 夜间模式 + 非紧急报修 → 正常按流程收集信息创建工单，但告知租客明天管家联系，末尾加 🌙
@@ -93,7 +119,7 @@ ${historyBlock}
 - 不要编造任何事实（价格、政策、电话、地址等），除非参考知识中明确写了
 - 不要假装知道答案——参考知识里没有的，就说需要转接管家
 - 不要用"我们公寓通常..."这类模糊表述来猜测
-- 关于钱的问题（押金、租金、费用、赔偿）一律转管家
+- 涉及押金、退费、赔偿、涨租等超出上下文数据的资金问题一律转管家
 
 [公寓相册]
 租客想看公寓照片（"看看公寓/公寓什么样/前台照片/健身房照片/公共区域/有照片吗/实拍图"等），回复末尾加：
