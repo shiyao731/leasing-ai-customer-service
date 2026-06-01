@@ -26,8 +26,8 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     const dueDay = leaseDay - 1;
     const dueDayStr = dueDay === 0 ? "每月最后一天" : `每月${dueDay}号`;
 
-    const rentInfo = `- 月租金：¥${t.monthlyRent} | 合同起始日：${new Date(t.leaseStart).toLocaleDateString("zh-CN")}
-- 交租日：${dueDayStr}前缴纳当月房租`;
+    const rentInfo = `- 月租金：¥${t.monthlyRent} | 账单周期起始日：每月${leaseDay}号
+- 交租规则：房租在账单周期起始日前一天缴纳（即${dueDayStr}）`;
 
     let statusLine: string;
     if (t.billStatus === "overdue") {
